@@ -1,0 +1,73 @@
+
+name: Build Custom TV Remote APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare Android project
+        run: |
+          mkdir -p app/src/main/java/com/bala/customtvremote
+          mkdir -p app/src/main/res/values
+
+          cp MainActivity.java app/src/main/java/com/bala/customtvremote/
+          cp AndroidManifest.xml app/src/main/
+          cp styles.xml app/src/main/res/values/
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.bala.customtvremote'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.bala.customtvremote'
+                  minSdk 23
+                  targetSdk 28
+                  versionCode 1
+                  versionName '1.0.0'
+              }
+          }
+          EOF
+
+      - name: Install SDK components
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CustomTVRemote-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          
